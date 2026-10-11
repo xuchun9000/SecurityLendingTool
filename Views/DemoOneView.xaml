@@ -19,7 +19,7 @@
         <TextBlock Grid.Row="0"
                    Margin="0,0,0,8"
                    FontSize="14"
-                   Text="SelectionUnit=Cell — F3/F4 move selection down/up one row, wraps at ends (via DataGridCellSelectionBehavior)." />
+                   Text="SelectionUnit=Cell — F3/F4 move selection down/up between data rows (empty rows skipped), wraps at ends (via DataGridCellSelectionBehavior)." />
 
         <TextBlock Grid.Row="1"
                    Margin="0,0,0,8"

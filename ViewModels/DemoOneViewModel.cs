@@ -6,6 +6,28 @@ namespace SecurityLendingTool.ViewModels;
 
 public partial class DemoOneViewModel : ObservableObject
 {
+    private const int TotalRows = 100;
+    private const int FilledRows = 20;
+    private const int FillRangeRows = 40; // data rows are placed only within the first 40 rows
+
+    private static readonly string[] FirstNames =
+    {
+        "Alice", "Bob", "Carol", "David", "Elena", "Frank", "Grace", "Henry", "Ivy", "Jack",
+        "Karen", "Leo", "Maya", "Nathan", "Olivia", "Paul", "Quinn", "Rachel", "Sam", "Tina",
+    };
+
+    private static readonly string[] LastNames =
+    {
+        "Chen", "Martinez", "Nguyen", "Kim", "Rossi", "Patel", "Okonkwo", "Walsh", "Garcia", "Smith",
+        "Johnson", "Lee", "Brown", "Wang", "Lopez", "Miller", "Davis", "Wilson", "Taylor", "Clark",
+    };
+
+    private static readonly string[] Cities =
+    {
+        "Seattle", "Austin", "Chicago", "Boston", "Denver", "Portland", "Atlanta", "Phoenix",
+        "New York", "San Diego", "Miami", "Dallas",
+    };
+
     [ObservableProperty]
     private Person? selectedPeople;
 
@@ -19,15 +41,37 @@ public partial class DemoOneViewModel : ObservableObject
     [ObservableProperty]
     private double selectionAverage;
 
-    public ObservableCollection<Person> People { get; } = new()
+    /// <summary>
+    /// 100 rows: 20 rows randomly placed within the first 40 hold data, the rest are empty placeholders.
+    /// </summary>
+    public ObservableCollection<Person> People { get; } = CreateSampleRows();
+
+    private static ObservableCollection<Person> CreateSampleRows()
     {
-        new Person { Name = "Alice Chen", Age = 28, Score = 88.5, City = "Seattle", Email = "alice.chen@example.com" },
-        new Person { Name = "Bob Martinez", Age = 34, Score = 92.25, City = "Austin", Email = "bob.martinez@example.com" },
-        new Person { Name = "Carol Nguyen", Age = 41, Score = 76.0, City = "Chicago", Email = "carol.nguyen@example.com" },
-        new Person { Name = "David Kim", Age = 25, Score = 81.75, City = "Boston", Email = "david.kim@example.com" },
-        new Person { Name = "Elena Rossi", Age = 31, Score = 95.5, City = "Denver", Email = "elena.rossi@example.com" },
-        new Person { Name = "Frank Patel", Age = 47, Score = 69.25, City = "Portland", Email = "frank.patel@example.com" },
-        new Person { Name = "Grace Okonkwo", Age = 29, Score = 90.0, City = "Atlanta", Email = "grace.okonkwo@example.com" },
-        new Person { Name = "Henry Walsh", Age = 36, Score = 84.5, City = "Phoenix", Email = "henry.walsh@example.com" },
-    };
+        var random = new Random();
+        var rows = new ObservableCollection<Person>();
+        for (int i = 0; i < TotalRows; i++)
+            rows.Add(Person.CreateEmpty());
+
+        // Pick distinct random row positions to fill, within the first FillRangeRows rows.
+        var positions = Enumerable.Range(0, FillRangeRows)
+                                  .OrderBy(_ => random.Next())
+                                  .Take(FilledRows);
+
+        foreach (int index in positions)
+        {
+            string first = FirstNames[random.Next(FirstNames.Length)];
+            string last = LastNames[random.Next(LastNames.Length)];
+            rows[index] = new Person
+            {
+                Name = $"{first} {last}",
+                Age = random.Next(22, 66),
+                Score = Math.Round(60 + random.NextDouble() * 40, 2),
+                City = Cities[random.Next(Cities.Length)],
+                Email = $"{first.ToLowerInvariant()}.{last.ToLowerInvariant()}@example.com",
+            };
+        }
+
+        return rows;
+    }
 }

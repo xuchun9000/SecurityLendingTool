@@ -1,0 +1,24 @@
+<Window x:Class="SecurityLendingTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SecurityLendingTool.ViewModels"
+        xmlns:views="clr-namespace:SecurityLendingTool.Views"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Security Lending Tool"
+        Height="450"
+        Width="800"
+        WindowStartupLocation="CenterScreen"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel, IsDesignTimeCreatable=True}">
+    <Window.DataContext>
+        <vm:MainViewModel />
+    </Window.DataContext>
+
+    <TabControl Margin="8">
+        <TabItem Header="Demo One">
+            <views:DemoOneView DataContext="{Binding DemoOne}" />
+        </TabItem>
+        <!-- Add more TabItem entries here later. -->
+    </TabControl>
+</Window>

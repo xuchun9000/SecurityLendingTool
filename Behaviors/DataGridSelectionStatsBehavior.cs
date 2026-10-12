@@ -81,7 +81,9 @@ public static class DataGridSelectionStatsBehavior
     private static void OnIsEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not DataGrid grid)
+        {
             return;
+        }
 
         grid.SelectedCellsChanged -= OnSelectedCellsChanged;
 
@@ -99,7 +101,9 @@ public static class DataGridSelectionStatsBehavior
     private static void OnSelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
     {
         if (sender is DataGrid grid)
+        {
             Recalculate(grid);
+        }
     }
 
     // ---------- Aggregation ----------
@@ -114,16 +118,20 @@ public static class DataGridSelectionStatsBehavior
         bool useDouble = false;
 
         // One evaluator reused for every cell in this pass.
-        var evaluator = new BindingEvaluator();
+        BindingEvaluator evaluator = new BindingEvaluator();
 
         foreach (DataGridCellInfo cell in grid.SelectedCells)
         {
             if (!cell.IsValid || cell.Item is null || cell.Column is null)
+            {
                 continue;
+            }
 
             object? value = GetCellValue(evaluator, cell.Item, cell.Column);
             if (!TryGetNumber(value, out decimal dec, out double dbl, out bool isDecimalSafe))
+            {
                 continue;
+            }
 
             count++;
             doubleSum += dbl;
@@ -173,7 +181,9 @@ public static class DataGridSelectionStatsBehavior
             ?? (string.IsNullOrEmpty(column.SortMemberPath) ? null : new PropertyPath(column.SortMemberPath));
 
         if (path is null || string.IsNullOrEmpty(path.Path))
+        {
             return null;
+        }
 
         return evaluator.Evaluate(item, path);
     }
@@ -209,7 +219,9 @@ public static class DataGridSelectionStatsBehavior
         isDecimalSafe = false;
 
         if (double.IsNaN(v) || double.IsInfinity(v))
+        {
             return true;
+        }
 
         try
         {
@@ -234,7 +246,7 @@ public static class DataGridSelectionStatsBehavior
         public object? Evaluate(object source, PropertyPath path)
         {
             // Only the path is reused (no Converter/StringFormat), so we get the raw CLR value.
-            var binding = new Binding { Path = path, Source = source, Mode = BindingMode.OneTime };
+            Binding binding = new Binding { Path = path, Source = source, Mode = BindingMode.OneTime };
             BindingOperations.SetBinding(this, ValueProperty, binding);
             object? value = GetValue(ValueProperty);
             BindingOperations.ClearBinding(this, ValueProperty);

@@ -46,15 +46,22 @@ public partial class DemoOneViewModel : ObservableObject
     /// </summary>
     public ObservableCollection<Person> People { get; } = CreateSampleRows();
 
+    partial void OnSelectionAverageChanged(double value)
+    {
+        
+    }
+
     private static ObservableCollection<Person> CreateSampleRows()
     {
-        var random = new Random();
-        var rows = new ObservableCollection<Person>();
+        Random random = new Random();
+        ObservableCollection<Person> rows = new ObservableCollection<Person>();
         for (int i = 0; i < TotalRows; i++)
+        {
             rows.Add(Person.CreateEmpty());
+        }
 
         // Pick distinct random row positions to fill, within the first FillRangeRows rows.
-        var positions = Enumerable.Range(0, FillRangeRows)
+        IEnumerable<int> positions = Enumerable.Range(0, FillRangeRows)
                                   .OrderBy(_ => random.Next())
                                   .Take(FilledRows);
 

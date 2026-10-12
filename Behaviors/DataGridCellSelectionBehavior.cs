@@ -68,7 +68,9 @@ public static class DataGridCellSelectionBehavior
     private static void OnIsEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not DataGrid grid)
+        {
             return;
+        }
 
         // Always unsubscribe first so handlers are never attached twice.
         // Handlers are static (no captured target), so the DataGrid holds no reference
@@ -89,14 +91,18 @@ public static class DataGridCellSelectionBehavior
     private static void OnSelectedCellsChanged(object sender, SelectedCellsChangedEventArgs e)
     {
         if (sender is DataGrid grid)
+        {
             UpdateSelectedItem(grid);
+        }
     }
 
     private static void UpdateSelectedItem(DataGrid grid)
     {
         object? item = GetTopLeftCell(grid, grid.SelectedCells)?.Item;
         if (ReferenceEquals(GetSelectedItem(grid), item))
+        {
             return;
+        }
 
         SetIsUpdating(grid, true);
         try
@@ -115,23 +121,31 @@ public static class DataGridCellSelectionBehavior
     private static void OnSelectedItemChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         if (d is not DataGrid grid || GetIsUpdating(grid) || !GetIsEnabled(grid))
+        {
             return;
+        }
 
         // Value pushed from the ViewModel: reflect it in the grid if it differs.
         if (ReferenceEquals(GetTopLeftCell(grid, grid.SelectedCells)?.Item, e.NewValue))
+        {
             return;
+        }
 
         grid.SelectedCells.Clear();
         if (e.NewValue is null || grid.Items.IndexOf(e.NewValue) < 0)
+        {
             return;
+        }
 
-        var column = grid.Columns.Where(c => c.Visibility == Visibility.Visible)
+        DataGridColumn? column = grid.Columns.Where(c => c.Visibility == Visibility.Visible)
                                  .OrderBy(c => c.DisplayIndex)
                                  .FirstOrDefault();
         if (column is null)
+        {
             return;
+        }
 
-        var cell = new DataGridCellInfo(e.NewValue, column);
+        DataGridCellInfo cell = new DataGridCellInfo(e.NewValue, column);
         grid.SelectedCells.Add(cell);
         grid.CurrentCell = cell;
         grid.ScrollIntoView(cell.Item, cell.Column);
@@ -142,10 +156,14 @@ public static class DataGridCellSelectionBehavior
     private static void OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (sender is not DataGrid grid || e.Key is not (Key.F3 or Key.F4))
+        {
             return;
+        }
 
         if (TryMoveSelection(grid, e.Key == Key.F3 ? 1 : -1))
+        {
             e.Handled = true;
+        }
     }
 
     /// <summary>
@@ -164,46 +182,58 @@ public static class DataGridCellSelectionBehavior
     private static bool TryMoveSelection(DataGrid grid, int rowDelta)
     {
         if (grid.SelectedCells.Count == 0 || grid.Items.Count == 0)
+        {
             return false;
+        }
 
         // Finish any in-progress cell/row edit first; changing the selection or current cell
         // in the middle of an edit (or an AddNew transaction) throws.
         if (!grid.CommitEdit(DataGridEditingUnit.Row, exitEditingMode: true))
+        {
             return false;
+        }
 
         // Grid row index of every item (reference identity, so Equals overrides can't collide),
         // and the ordered list of rows that hold data.
-        var rowIndex = new Dictionary<object, int>(grid.Items.Count, ReferenceEqualityComparer.Instance);
-        var dataRows = new List<int>();
+        Dictionary<object, int> rowIndex = new Dictionary<object, int>(grid.Items.Count, ReferenceEqualityComparer.Instance);
+        List<int> dataRows = new List<int>();
         for (int i = 0; i < grid.Items.Count; i++)
         {
             object item = grid.Items[i];
             rowIndex.TryAdd(item, i);
             if (IsDataRow(item))
+            {
                 dataRows.Add(i);
+            }
         }
 
         if (dataRows.Count == 0)
+        {
             return false;
+        }
 
         // Map grid row index -> position within dataRows.
-        var dataPos = new Dictionary<int, int>(dataRows.Count);
+        Dictionary<int, int> dataPos = new Dictionary<int, int>(dataRows.Count);
         for (int p = 0; p < dataRows.Count; p++)
+        {
             dataPos[dataRows[p]] = p;
+        }
 
         int RowOf(DataGridCellInfo c) =>
             c.Item is not null && rowIndex.TryGetValue(c.Item, out int r) ? r : -1;
 
-        var selected = grid.SelectedCells.Where(c => c.Column is not null).ToList();
+        List<DataGridCellInfo> selected = grid.SelectedCells.Where(c => c.Column is not null).ToList();
         if (selected.Count == 0)
+        {
             return false;
+        }
 
-        var onData = selected
+        List<(DataGridCellInfo Cell, int Row)> onData = selected
             .Select(c => (Cell: c, Row: RowOf(c)))
             .Where(x => dataPos.ContainsKey(x.Row))
             .ToList();
 
-        var moved = new List<DataGridCellInfo>(selected.Count);
+        List<DataGridCellInfo> moved = new List<DataGridCellInfo>(selected.Count);
 
         if (onData.Count > 0)
         {
@@ -214,11 +244,15 @@ public static class DataGridCellSelectionBehavior
 
             int newMin = minPos + rowDelta;
             if (newMin < 0)
+            {
                 newMin = dataRows.Count - height;
+            }
             else if (newMin + height > dataRows.Count)
+            {
                 newMin = 0;
+            }
 
-            foreach (var (cell, row) in onData)
+            foreach ((DataGridCellInfo cell, int row) in onData)
             {
                 int targetRow = dataRows[newMin + (dataPos[row] - minPos)];
                 moved.Add(new DataGridCellInfo(grid.Items[targetRow], cell.Column));
@@ -234,16 +268,20 @@ public static class DataGridCellSelectionBehavior
                 : dataRows.LastOrDefault(r => r < anchor, dataRows[^1]);
 
             object targetItem = grid.Items[targetRow];
-            foreach (var column in selected.Select(c => c.Column).Distinct())
+            foreach (DataGridColumn column in selected.Select(c => c.Column).Distinct())
+            {
                 moved.Add(new DataGridCellInfo(targetItem, column));
+            }
         }
 
         grid.SelectedCells.Clear();
-        foreach (var cell in moved)
+        foreach (DataGridCellInfo cell in moved)
+        {
             grid.SelectedCells.Add(cell);
+        }
 
         // Keep keyboard focus / current cell on the new top-left cell (always a data row here).
-        var first = GetTopLeftCell(grid, moved)!.Value;
+        DataGridCellInfo first = GetTopLeftCell(grid, moved)!.Value;
         grid.CurrentCell = first;
         grid.ScrollIntoView(first.Item, first.Column);
         grid.Focus();
@@ -264,9 +302,11 @@ public static class DataGridCellSelectionBehavior
 
     private static DataGridCellInfo? GetTopLeftCell(DataGrid grid, IEnumerable<DataGridCellInfo> cells)
     {
-        var list = cells.ToList();
+        List<DataGridCellInfo> list = cells.ToList();
         if (list.Count == 0)
+        {
             return null;
+        }
 
         return list
             .OrderBy(c => grid.Items.IndexOf(c.Item))

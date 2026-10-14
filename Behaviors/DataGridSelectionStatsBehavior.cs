@@ -17,15 +17,19 @@ namespace SecurityLendingTool.Behaviors;
 /// <item><c>Count</c>: number of numeric cells in the selection.</item>
 /// <item><c>Sum</c>: sum of those values (0 when Count = 0).</item>
 /// <item><c>Average</c>: Sum / Count (0 when Count = 0).</item>
+/// <item><c>SelectedRows</c>: the distinct row items that have at least one selected cell,
+/// in grid order. With SelectionUnit="Cell" every selected cell's row is included;
+/// with "FullRow" it is simply the selected rows. The "new item" placeholder row is excluded.</item>
 /// </list>
-/// Count/Sum/Average are written by the behavior; bind them to the ViewModel with
+/// Count/Sum/Average/SelectedRows are written by the behavior; bind them to the ViewModel with
 /// <c>Mode=OneWayToSource</c>, or read them directly with ElementName.
 /// <code>
 /// &lt;DataGrid x:Name="Grid" SelectionUnit="Cell"
 ///           b:DataGridSelectionStatsBehavior.IsEnabled="True"
 ///           b:DataGridSelectionStatsBehavior.Count="{Binding SelectionCount, Mode=OneWayToSource}"
 ///           b:DataGridSelectionStatsBehavior.Sum="{Binding SelectionSum, Mode=OneWayToSource}"
-///           b:DataGridSelectionStatsBehavior.Average="{Binding SelectionAverage, Mode=OneWayToSource}" /&gt;
+///           b:DataGridSelectionStatsBehavior.Average="{Binding SelectionAverage, Mode=OneWayToSource}"
+///           b:DataGridSelectionStatsBehavior.SelectedRows="{Binding SelectedRows, Mode=OneWayToSource}" /&gt;
 /// &lt;!-- or, without a ViewModel: --&gt;
 /// &lt;TextBlock Text="{Binding (b:DataGridSelectionStatsBehavior.Sum), ElementName=Grid}" /&gt;
 /// </code>
@@ -76,6 +80,23 @@ public static class DataGridSelectionStatsBehavior
     public static double GetAverage(DependencyObject obj) => (double)obj.GetValue(AverageProperty);
     public static void SetAverage(DependencyObject obj, double value) => obj.SetValue(AverageProperty, value);
 
+    // ---------- SelectedRows (written by the behavior) ----------
+
+    /// <summary>
+    /// Distinct row items touched by the current selection, in grid order.
+    /// A new list instance is published whenever the set of rows changes, so a
+    /// OneWayToSource binding always sees the change.
+    /// </summary>
+    public static readonly DependencyProperty SelectedRowsProperty =
+        DependencyProperty.RegisterAttached(
+            "SelectedRows",
+            typeof(IReadOnlyList<object>),
+            typeof(DataGridSelectionStatsBehavior),
+            new PropertyMetadata(Array.Empty<object>()));
+
+    public static IReadOnlyList<object> GetSelectedRows(DependencyObject obj) => (IReadOnlyList<object>)obj.GetValue(SelectedRowsProperty);
+    public static void SetSelectedRows(DependencyObject obj, IReadOnlyList<object> value) => obj.SetValue(SelectedRowsProperty, value);
+
     // ---------- Attach / detach ----------
 
     private static void OnIsEnabledChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -91,10 +112,12 @@ public static class DataGridSelectionStatsBehavior
         {
             grid.SelectedCellsChanged += OnSelectedCellsChanged;
             Recalculate(grid);
+            UpdateSelectedRows(grid);
         }
         else
         {
             Publish(grid, 0, 0d, 0d);
+            grid.SetCurrentValue(SelectedRowsProperty, Array.Empty<object>());
         }
     }
 
@@ -103,7 +126,67 @@ public static class DataGridSelectionStatsBehavior
         if (sender is DataGrid grid)
         {
             Recalculate(grid);
+            UpdateSelectedRows(grid);
         }
+    }
+
+    // ---------- Selected rows ----------
+
+    private static void UpdateSelectedRows(DataGrid grid)
+    {
+        // Row items that own at least one selected cell.
+        HashSet<object> touched = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        foreach (DataGridCellInfo cell in grid.SelectedCells)
+        {
+            if (cell.Item is not null && cell.Item != CollectionView.NewItemPlaceholder)
+            {
+                touched.Add(cell.Item);
+            }
+        }
+
+        // Walk the grid once so the result follows the displayed row order.
+        List<object> rows = new List<object>(touched.Count);
+        if (touched.Count > 0)
+        {
+            foreach (object item in grid.Items)
+            {
+                if (touched.Remove(item))
+                {
+                    rows.Add(item);
+                    if (touched.Count == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Only publish when the set of rows actually changed.
+        IReadOnlyList<object> current = GetSelectedRows(grid);
+        if (SameRows(current, rows))
+        {
+            return;
+        }
+
+        grid.SetCurrentValue(SelectedRowsProperty, rows.AsReadOnly());
+    }
+
+    private static bool SameRows(IReadOnlyList<object>? a, List<object> b)
+    {
+        if (a is null || a.Count != b.Count)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < b.Count; i++)
+        {
+            if (!ReferenceEquals(a[i], b[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     // ---------- Aggregation ----------

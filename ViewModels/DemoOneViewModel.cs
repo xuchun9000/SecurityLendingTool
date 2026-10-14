@@ -41,15 +41,14 @@ public partial class DemoOneViewModel : ObservableObject
     [ObservableProperty]
     private double selectionAverage;
 
+    // Pushed by DataGridSelectionStatsBehavior (OneWayToSource): every row that has a selected cell.
+    [ObservableProperty]
+    private IReadOnlyList<object> selectedRows = Array.Empty<object>();
+
     /// <summary>
     /// 100 rows: 20 rows randomly placed within the first 40 hold data, the rest are empty placeholders.
     /// </summary>
     public ObservableCollection<Person> People { get; } = CreateSampleRows();
-
-    partial void OnSelectionAverageChanged(double value)
-    {
-        
-    }
 
     private static ObservableCollection<Person> CreateSampleRows()
     {

@@ -35,6 +35,7 @@
                   b:DataGridSelectionStatsBehavior.Count="{Binding SelectionCount, Mode=OneWayToSource}"
                   b:DataGridSelectionStatsBehavior.Sum="{Binding SelectionSum, Mode=OneWayToSource}"
                   b:DataGridSelectionStatsBehavior.Average="{Binding SelectionAverage, Mode=OneWayToSource}"
+                  b:DataGridSelectionStatsBehavior.SelectedRows="{Binding SelectedRows, Mode=OneWayToSource}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"

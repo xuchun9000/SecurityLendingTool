@@ -1,0 +1,58 @@
+<UserControl x:Class="SecurityLendingTool.Controls.SLNumericUpDown"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Name="Root"
+             Height="34"
+             MinWidth="72">
+    <UserControl.Resources>
+        <Style x:Key="SLSpinButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Delay" Value="350" />
+            <Setter Property="Interval" Value="70" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Foreground" Value="#555555" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border x:Name="Bd" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#E5F1FB" />
+                                <Setter Property="Foreground" Value="#0067C0" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#CCE4F7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Border CornerRadius="6" BorderBrush="#C8CDD3" BorderThickness="1" Background="White" SnapsToDevicePixels="True">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="22" />
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="ValueBox" Grid.Column="0" BorderThickness="0" Background="Transparent"
+                     FontSize="15" FontWeight="SemiBold" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                     Padding="4,0" ToolTip="Scroll the mouse wheel, use the arrows, or type" />
+            <Border Grid.Column="1" BorderBrush="#E1E4E8" BorderThickness="1,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <RepeatButton Grid.Row="0" Style="{StaticResource SLSpinButtonStyle}" Click="UpButton_Click">
+                        <Path Data="M 0 4 L 4 0 L 8 4 Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RepeatButton}}" />
+                    </RepeatButton>
+                    <RepeatButton Grid.Row="1" Style="{StaticResource SLSpinButtonStyle}" Click="DownButton_Click">
+                        <Path Data="M 0 0 L 8 0 L 4 4 Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RepeatButton}}" />
+                    </RepeatButton>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

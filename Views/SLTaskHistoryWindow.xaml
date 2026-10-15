@@ -1,0 +1,55 @@
+﻿<Window x:Class="SecurityLendingTool.Views.SLTaskHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Width="760"
+        Height="420"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="8">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
+            <TextBlock x:Name="CountText" DockPanel.Dock="Left" Foreground="Gray" VerticalAlignment="Center" />
+            <Button DockPanel.Dock="Right" Content="Close" Width="80" IsCancel="True" Click="Close_Click" />
+            <Button DockPanel.Dock="Right" Content="Refresh" Width="80" Margin="0,0,8,0" Click="Refresh_Click" />
+        </DockPanel>
+        <DataGrid x:Name="HistoryGrid"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal"
+                  HorizontalGridLinesBrush="#FFE0E0E0">
+            <DataGrid.RowStyle>
+                <!-- Thick black line above the first message of every attempt after the first. -->
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Message.Event}" Value="Failed">
+                            <Setter Property="Background" Value="#FFFFE0E0" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsNewAttempt}" Value="True">
+                            <Setter Property="BorderBrush" Value="Black" />
+                            <Setter Property="BorderThickness" Value="0,2,0,0" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Attempt" Binding="{Binding Attempt}" Width="60" />
+                <DataGridTextColumn Header="Time" Binding="{Binding Message.Timestamp, StringFormat=yyyy-MM-dd HH:mm:ss.fff}" Width="160" />
+                <DataGridTextColumn Header="Event" Binding="{Binding Message.Event}" Width="120" />
+                <DataGridTextColumn Header="Status" Binding="{Binding Message.Status}" Width="90" />
+                <DataGridTextColumn Header="Progress" Binding="{Binding Message.Progress, StringFormat={}{0:0}%}" Width="70" />
+                <DataGridTextColumn Header="Message" Binding="{Binding Message.Text}" Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <!-- About 50 characters per line, then wrap. -->
+                        <Style TargetType="TextBlock">
+                            <Setter Property="TextWrapping" Value="Wrap" />
+                            <Setter Property="MaxWidth" Value="350" />
+                            <Setter Property="HorizontalAlignment" Value="Left" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+    </DockPanel>
+</Window>

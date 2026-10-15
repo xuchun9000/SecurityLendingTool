@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 
 namespace SecurityLendingTool.Tasks.Core;
 
@@ -46,6 +46,12 @@ public interface ISLTask : INotifyPropertyChanged
     /// May be raised on a background thread; dispatch to the UI thread if needed.
     /// </summary>
     event EventHandler<SLTaskProgressEventArgs>? ProgressChanged;
+
+    /// <summary>
+    /// A snapshot of every message raised through <see cref="ProgressChanged"/>, oldest first.
+    /// Kept across runs (not cleared by <see cref="Reset"/>), so retries are visible too. Thread-safe.
+    /// </summary>
+    IReadOnlyList<SLTaskMessage> GetMessageHistory();
 
     // ---------- Run ----------
 

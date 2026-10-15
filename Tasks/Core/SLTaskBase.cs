@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SecurityLendingTool.Tasks.Core;
 
@@ -18,6 +18,9 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
     private double progress;
     private Exception? error;
     private object? result;
+    private string message = string.Empty;
+    private readonly List<SLTaskMessage> messageHistory = new List<SLTaskMessage>();
+    private readonly object messageHistoryLock = new object();
     private CancellationTokenSource? runCancellation;
 
     protected SLTaskBase(string name, string description)
@@ -78,8 +81,27 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         private set => SetProperty(ref result, value);
     }
 
+    /// <summary>
+    /// The latest status text: progress message while running, the error when Failed,
+    /// the reason when Skipped, the result (if any) when Completed.
+    /// </summary>
+    public string Message
+    {
+        get => message;
+        private set => SetProperty(ref message, value);
+    }
+
     /// <inheritdoc/>
     public event EventHandler<SLTaskProgressEventArgs>? ProgressChanged;
+
+    /// <inheritdoc/>
+    public IReadOnlyList<SLTaskMessage> GetMessageHistory()
+    {
+        lock (messageHistoryLock)
+        {
+            return messageHistory.ToArray();
+        }
+    }
 
     // ---------- Run (public entry point) ----------
 
@@ -169,6 +191,7 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         Error = null;
         Result = null;
         Progress = 0d;
+        Message = string.Empty;
         Status = SLTaskStatus.NotStarted;
         OnReset();
     }
@@ -203,12 +226,6 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
 
     private void RaiseProgressChanged(SLTaskProgressEvent progressEvent, string message = "")
     {
-        EventHandler<SLTaskProgressEventArgs>? handler = ProgressChanged;
-        if (handler == null)
-        {
-            return;
-        }
-
         // Description from the enum, plus the extra detail (if any): e.g. "Failed: timeout".
         string description = progressEvent.ToDescription();
         string text;
@@ -225,6 +242,18 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
             text = $"{description}: {message}";
         }
 
+        Message = text;
+        lock (messageHistoryLock)
+        {
+            messageHistory.Add(new SLTaskMessage(DateTime.Now, progressEvent, Status, Progress, text));
+        }
+
+        EventHandler<SLTaskProgressEventArgs>? handler = ProgressChanged;
+        if (handler == null)
+        {
+            return;
+        }
+
         handler(this, new SLTaskProgressEventArgs(progressEvent, Status, Progress, text));
     }
 
@@ -236,7 +265,7 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         Result = output;
         Progress = 100d;
         Status = SLTaskStatus.Completed;
-        RaiseProgressChanged(SLTaskProgressEvent.Completed);
+        RaiseProgressChanged(SLTaskProgressEvent.Completed, output?.ToString() ?? string.Empty);
     }
 
     private void Fail(Exception exception)

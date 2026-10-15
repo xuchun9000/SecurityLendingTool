@@ -1,0 +1,194 @@
+<Window x:Class="SecurityLendingTool.Views.MessageHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:SecurityLendingTool.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DataContext="{d:DesignInstance Type=vm:MessageHistoryViewModel}"
+        Title="Message History"
+        Width="1100"
+        Height="680"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="8">
+        <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left" Text="{Binding FooterText}" Foreground="Gray" FontSize="11" VerticalAlignment="Center" />
+            <Button DockPanel.Dock="Right" Content="Close" Width="80" IsCancel="True" Click="Close_Click" />
+            <Button DockPanel.Dock="Right" Content="Refresh" Width="80" Margin="0,0,8,0" Command="{Binding RefreshCommand}" />
+            <Button DockPanel.Dock="Right" Content="Export CSV" Width="80" Margin="0,0,8,0" Command="{Binding ExportCsvCommand}" />
+        </DockPanel>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" MinWidth="120" />
+                <ColumnDefinition Width="5" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Year > Month > Day. Mon-Fri green, Sat/Sun gray, red "● N failed" marker. -->
+            <TreeView Grid.Column="0" ItemsSource="{Binding Years}" SelectedItemChanged="DayTree_SelectedItemChanged">
+                <TreeView.ItemContainerStyle>
+                    <Style TargetType="TreeViewItem">
+                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                        <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+                    </Style>
+                </TreeView.ItemContainerStyle>
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate DataType="{x:Type vm:MessageHistoryTreeNode}" ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Header}" Foreground="{Binding Foreground}" MinWidth="50" />
+                            <TextBlock Text="{Binding FailedText}" Foreground="#FFC00000" FontSize="10" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch" />
+
+            <!-- Right: the selected day. -->
+            <Border Grid.Column="2" BorderBrush="#FFABADB3" BorderThickness="1">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Background="#FFF7F7F7">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="8,6">
+                            <TextBlock Text="{Binding DayTitle}" FontSize="16" FontWeight="Bold" />
+                            <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                <TextBlock Text="{Binding SLTaskCountText}" Margin="0,0,24,0" />
+                                <TextBlock Text="{Binding CompletedCountText}" Foreground="Green" Margin="0,0,16,0" />
+                                <TextBlock Text="{Binding FailedCountText}" Foreground="Red" FontWeight="Bold" Margin="0,0,16,0" />
+                                <TextBlock Text="{Binding PassCountText}" Margin="0,0,16,0" />
+                                <TextBlock Text="{Binding TimeRangeText}" />
+                            </StackPanel>
+                            <TextBlock Text="{Binding InfoText}" Foreground="Gray" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <Grid Grid.Column="1" Margin="8,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="90" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Task:" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <ComboBox Grid.Row="0" Grid.Column="1"
+                                      ItemsSource="{Binding SLTaskFilterOptions}"
+                                      SelectedItem="{Binding SelectedSLTaskFilter}" />
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Search:" VerticalAlignment="Center" Margin="16,0,6,0" />
+                            <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                            <StackPanel Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,6,0,0">
+                                <CheckBox Content="Failed only" IsChecked="{Binding IsFailedOnly}" Margin="0,0,24,0" />
+                                <CheckBox Content="Hide Progress rows" IsChecked="{Binding IsProgressHidden}" />
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+
+                    <DataGrid x:Name="MessageGrid"
+                              ItemsSource="{Binding Rows}"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserSortColumns="False"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#FFE0E0E0"
+                              BorderThickness="0,1,0,0"
+                              Background="White">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="White" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSummary}" Value="True">
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Kind}" Value="SummaryCompleted">
+                                        <Setter Property="Background" Value="#FFE8F5E8" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Kind}" Value="SummaryFailed">
+                                        <Setter Property="Background" Value="#FFFFE0E0" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Kind}" Value="SummarySkipped">
+                                        <Setter Property="Background" Value="#FFFFF4D6" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding Kind}" Value="FailedMessage">
+                                        <Setter Property="Background" Value="#FFFFE0E0" />
+                                    </DataTrigger>
+                                    <!-- Thick black line between attempts. -->
+                                    <DataTrigger Binding="{Binding IsNewAttempt}" Value="True">
+                                        <Setter Property="BorderBrush" Value="Black" />
+                                        <Setter Property="BorderThickness" Value="0,2,0,0" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Header="Task / Time" Width="230">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:MessageHistoryRow}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button x:Name="ToggleButton"
+                                                    Content="{Binding Glyph}"
+                                                    Width="16"
+                                                    Padding="0"
+                                                    Background="Transparent"
+                                                    BorderThickness="0"
+                                                    Cursor="Hand"
+                                                    Command="{Binding DataContext.ToggleGroupCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                    CommandParameter="{Binding}" />
+                                            <TextBlock x:Name="TitleText" Text="{Binding Title}" Margin="4,0,0,0" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsSummary}" Value="False">
+                                                <Setter TargetName="ToggleButton" Property="Visibility" Value="Hidden" />
+                                                <Setter TargetName="TitleText" Property="Margin" Value="8,0,0,0" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Attempt" Binding="{Binding AttemptText}" Width="60" />
+                            <DataGridTextColumn Header="Event" Binding="{Binding EventText}" Width="130" />
+                            <DataGridTemplateColumn Header="Status" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate DataType="{x:Type vm:MessageHistoryRow}">
+                                        <TextBlock x:Name="StatusText" Text="{Binding StatusText}" />
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding Kind}" Value="SummaryCompleted">
+                                                <Setter TargetName="StatusText" Property="Foreground" Value="Green" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Kind}" Value="SummaryFailed">
+                                                <Setter TargetName="StatusText" Property="Foreground" Value="Red" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding Kind}" Value="SummarySkipped">
+                                                <Setter TargetName="StatusText" Property="Foreground" Value="Red" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding StatusText}" Value="Completed">
+                                                <Setter TargetName="StatusText" Property="Foreground" Value="Green" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Prog" Binding="{Binding ProgressText}" Width="50" />
+                            <DataGridTextColumn Header="Message" Binding="{Binding MessageText}" Width="*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <!-- About 50 characters per line, then wrap. -->
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextWrapping" Value="Wrap" />
+                                        <Setter Property="MaxWidth" Value="350" />
+                                        <Setter Property="HorizontalAlignment" Value="Left" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

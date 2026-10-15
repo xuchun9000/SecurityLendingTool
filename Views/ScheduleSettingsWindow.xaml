@@ -1,36 +1,204 @@
 <Window x:Class="SecurityLendingTool.Views.ScheduleSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:SecurityLendingTool.Controls"
         Title="Schedule"
-        SizeToContent="WidthAndHeight"
+        Width="460"
+        SizeToContent="Height"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
+        Background="#F3F4F6"
+        FontFamily="Segoe UI"
+        FontSize="13"
         WindowStartupLocation="CenterOwner">
-    <StackPanel Margin="16" MinWidth="260">
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="Start time (HH:mm):" VerticalAlignment="Center" Margin="0,0,8,6" />
-            <TextBox Grid.Row="0" Grid.Column="1" Width="80" Margin="0,0,0,6" HorizontalAlignment="Left"
-                     Text="{Binding StartTimeText, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Stop time (HH:mm):" VerticalAlignment="Center" Margin="0,0,8,0" />
-            <TextBox Grid.Row="1" Grid.Column="1" Width="80" HorizontalAlignment="Left"
-                     Text="{Binding StopTimeText, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Retry interval (sec):" VerticalAlignment="Center" Margin="0,6,8,0" />
-            <TextBox Grid.Row="2" Grid.Column="1" Width="80" Margin="0,6,0,0" HorizontalAlignment="Left"
-                     Text="{Binding RetryIntervalText, UpdateSourceTrigger=PropertyChanged}" />
-        </Grid>
-        <TextBlock Text="{Binding ErrorText}" Foreground="#C00000" Margin="0,8,0,0" TextWrapping="Wrap" MaxWidth="260" />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="OK" Width="70" Margin="0,0,8,0" IsDefault="True" Command="{Binding OkCommand}" />
-            <Button Content="Cancel" Width="70" IsCancel="True" Command="{Binding CancelCommand}" />
+    <Window.Resources>
+        <Style x:Key="SLCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#E1E4E8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="14,12" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style x:Key="SLHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#1F2328" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+        </Style>
+        <Style x:Key="SLLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#555B63" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="SLHintStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#6A737D" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+        </Style>
+        <Style x:Key="SLChipStyle" TargetType="Button">
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="#0067C0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="11" Background="#EEF5FC" BorderBrush="#B9D7F2" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#D6E8F8" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#B9D7F2" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SLDialogButtonStyle" TargetType="Button">
+            <Setter Property="MinWidth" Value="88" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Background" Value="White" />
+            <Setter Property="Foreground" Value="#1F2328" />
+            <Setter Property="BorderBrush" Value="#C8CDD3" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd" CornerRadius="6" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.88" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SLAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource SLDialogButtonStyle}">
+            <Setter Property="Background" Value="#0067C0" />
+            <Setter Property="BorderBrush" Value="#0067C0" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="16,16,16,14">
+        <!-- Daily window -->
+        <Border Style="{StaticResource SLCardStyle}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="🕘  Daily window" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="60" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource SLLabelStyle}" Text="Start" />
+                    <controls:SLNumericUpDown Grid.Row="0" Grid.Column="1" Width="72" Minimum="0" Maximum="23" Wrap="True" Format="D2" Value="{Binding StartHour}" ToolTip="Hour" />
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text=":" FontSize="16" FontWeight="SemiBold" Margin="6,0" VerticalAlignment="Center" />
+                    <controls:SLNumericUpDown Grid.Row="0" Grid.Column="3" Width="72" Minimum="0" Maximum="59" Wrap="True" Format="D2" Value="{Binding StartMinute}" ToolTip="Minute" />
+                    <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource SLLabelStyle}" Text="Stop" />
+                    <controls:SLNumericUpDown Grid.Row="2" Grid.Column="1" Width="72" Minimum="0" Maximum="23" Wrap="True" Format="D2" Value="{Binding StopHour}" ToolTip="Hour" />
+                    <TextBlock Grid.Row="2" Grid.Column="2" Text=":" FontSize="16" FontWeight="SemiBold" Margin="6,0" VerticalAlignment="Center" />
+                    <controls:SLNumericUpDown Grid.Row="2" Grid.Column="3" Width="72" Minimum="0" Maximum="59" Wrap="True" Format="D2" Value="{Binding StopMinute}" ToolTip="Minute" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <TextBlock Style="{StaticResource SLLabelStyle}" Text="Presets" Width="60" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="08:00–18:00" Command="{Binding SetWindowCommand}" CommandParameter="08:00-18:00" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="09:00–17:00" Command="{Binding SetWindowCommand}" CommandParameter="09:00-17:00" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="All day" Command="{Binding SetWindowCommand}" CommandParameter="00:00-23:59" />
+                </StackPanel>
+                <Border Background="#EEF7EE" CornerRadius="6" Padding="10,6" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Text="{Binding WindowSummary}" Foreground="#1A7F37" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding OvernightNote}" Foreground="#9A6700" FontSize="12">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Retry -->
+        <Border Style="{StaticResource SLCardStyle}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="🔁  Retry" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Slider Grid.Column="0" Minimum="5" Maximum="600" SmallChange="5" LargeChange="30" TickFrequency="5" IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center" Margin="0,0,12,0" Value="{Binding RetrySliderValue}" />
+                    <controls:SLNumericUpDown Grid.Column="1" Width="84" Minimum="{Binding MinRetry}" Maximum="{Binding MaxRetry}" Step="5" Value="{Binding RetryIntervalSeconds}" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource SLLabelStyle}" Text="sec" Margin="6,0,0,0" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Style="{StaticResource SLChipStyle}" Content="15 s" Command="{Binding SetRetryCommand}" CommandParameter="15" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="30 s" Command="{Binding SetRetryCommand}" CommandParameter="30" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="1 min" Command="{Binding SetRetryCommand}" CommandParameter="60" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="5 min" Command="{Binding SetRetryCommand}" CommandParameter="300" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="10 min" Command="{Binding SetRetryCommand}" CommandParameter="600" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource SLHintStyle}" Text="{Binding RetrySummary}" />
+            </StackPanel>
+        </Border>
+
+        <!-- Message history -->
+        <Border Style="{StaticResource SLCardStyle}">
+            <StackPanel>
+                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="🗂  Message history" />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Slider Grid.Column="0" Minimum="1" Maximum="24" SmallChange="1" LargeChange="3" TickFrequency="1" IsSnapToTickEnabled="True"
+                            TickPlacement="BottomRight" VerticalAlignment="Center" Margin="0,0,12,0" Value="{Binding RetentionSliderValue}" />
+                    <controls:SLNumericUpDown Grid.Column="1" Width="84" Minimum="{Binding MinRetention}" Maximum="{Binding MaxRetention}" Value="{Binding RetentionMonths}" />
+                    <TextBlock Grid.Column="2" Style="{StaticResource SLLabelStyle}" Text="months" Margin="6,0,0,0" />
+                </Grid>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Style="{StaticResource SLChipStyle}" Content="1 mo" Command="{Binding SetRetentionCommand}" CommandParameter="1" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="3 mo" Command="{Binding SetRetentionCommand}" CommandParameter="3" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="6 mo" Command="{Binding SetRetentionCommand}" CommandParameter="6" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="1 yr" Command="{Binding SetRetentionCommand}" CommandParameter="12" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="2 yr" Command="{Binding SetRetentionCommand}" CommandParameter="24" />
+                </StackPanel>
+                <TextBlock Style="{StaticResource SLHintStyle}" Text="{Binding RetentionSummary}" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="{Binding ErrorText}" Foreground="#C00000" FontWeight="SemiBold" TextWrapping="Wrap" Margin="2,0,0,4" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+            <Button Style="{StaticResource SLAccentButtonStyle}" Content="OK" Margin="0,0,8,0" IsDefault="True" Command="{Binding OkCommand}" />
+            <Button Style="{StaticResource SLDialogButtonStyle}" Content="Cancel" IsCancel="True" Command="{Binding CancelCommand}" />
         </StackPanel>
     </StackPanel>
 </Window>

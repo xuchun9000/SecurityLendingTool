@@ -1,4 +1,4 @@
-<Window x:Class="SecurityLendingTool.Views.MainWindow"
+﻿<Window x:Class="SecurityLendingTool.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:SecurityLendingTool.ViewModels"
@@ -19,7 +19,7 @@
         <TabItem Header="Demo One">
             <views:DemoOneView DataContext="{Binding DemoOne}" />
         </TabItem>
-        <TabItem Header="Tasks">
+        <TabItem Header="Tasks" IsSelected="True">
             <views:TasksView DataContext="{Binding SLTasksTab}" />
         </TabItem>
         <!-- Add more TabItem entries here later. -->

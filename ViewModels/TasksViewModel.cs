@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecurityLendingTool.Models;
@@ -53,13 +53,27 @@ public partial class TasksViewModel : ObservableObject
             new GOSOSDTLON_Task(),
         };
 
+        // Save every message of every SLTask to SQLite; flush the queue when the app exits.
+        foreach (ISLTask slTask in SLTasks)
+        {
+            _messageStore.Attach(slTask);
+        }
+
+        if (System.Windows.Application.Current != null)
+        {
+            System.Windows.Application.Current.Exit += (sender, e) => _messageStore.Dispose();
+        }
+
         _scheduler.Settings = SLScheduleSettings.Load();
+        _messageStore.RetentionMonths = _scheduler.Settings.MessageRetentionMonths;
         _scheduler.StartRequested += Scheduler_StartRequested;
         _scheduler.StopRequested += Scheduler_StopRequested;
         UpdateScanStatusText();
     }
 
     private readonly SLTaskScheduler _scheduler = new SLTaskScheduler();
+
+    private readonly SLTaskMessageStore _messageStore = new SLTaskMessageStore();
 
     private CancellationTokenSource? _runAllCancellation;
 
@@ -80,10 +94,25 @@ public partial class TasksViewModel : ObservableObject
     /// <summary>True while a scheduled cycle (passes + retry waits) is active; disables the manual Run All button.</summary>
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(RunAllSLTasksCommand))] private bool _IsScheduledCycleActive;
 
+    /// <summary>True while waiting between passes; shows the countdown bar.</summary>
+    [ObservableProperty] private bool _IsWaitingForRetry;
+
+    /// <summary>How much of the retry wait has passed, 0-100.</summary>
+    [ObservableProperty] private double _RetryWaitProgress;
+
+    /// <summary>Text in the middle of the countdown bar, e.g. "Next pass in 42 s".</summary>
+    [ObservableProperty] private string _RetryCountdownText = string.Empty;
+
     public string ScanButtonText => IsScanning ? "Stop Scan" : "Scan";
 
     /// <summary>Set by the view: shows the schedule dialog and returns the new settings, or null on Cancel.</summary>
     public Func<SLScheduleSettings, SLScheduleSettings?>? ShowScheduleDialog { get; set; }
+
+    /// <summary>Set by the view: shows the message history window of one SLTask.</summary>
+    public Action<ISLTask>? ShowSLTaskHistoryDialog { get; set; }
+
+    /// <summary>Set by the view: shows the database Message History window (database path, retention months).</summary>
+    public Action<string, int>? ShowMessageHistoryDialog { get; set; }
 
     private bool CanRunSingleSLTask(ISLTask? slTask)
     {
@@ -210,7 +239,7 @@ public partial class TasksViewModel : ObservableObject
                 int retrySeconds = Math.Max(5, _scheduler.Settings.RetryIntervalSeconds);
                 DateTime retryAt = DateTime.Now.AddSeconds(retrySeconds);
                 ScanStatusText = $"Pass {pass}: {notCompleted} not completed, retrying at {retryAt:HH:mm:ss}";
-                await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(retrySeconds), cancellationToken);
+                await WaitForRetryAsync(retrySeconds, pass + 1, cancellationToken);
                 pass++;
             }
         }
@@ -221,6 +250,37 @@ public partial class TasksViewModel : ObservableObject
         finally
         {
             IsScheduledCycleActive = false;
+        }
+    }
+
+    /// <summary>Waits between passes, updating the countdown bar 4 times a second.</summary>
+    private async Task WaitForRetryAsync(int retrySeconds, int nextPass, CancellationToken cancellationToken)
+    {
+        DateTime start = DateTime.Now;
+        DateTime end = start.AddSeconds(retrySeconds);
+        IsWaitingForRetry = true;
+        try
+        {
+            while (true)
+            {
+                TimeSpan remaining = end - DateTime.Now;
+                if (remaining <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
+                double elapsed = (DateTime.Now - start).TotalSeconds;
+                RetryWaitProgress = elapsed / retrySeconds * 100d;
+                RetryCountdownText = $"Pass {nextPass} in {Math.Ceiling(remaining.TotalSeconds):0} s";
+                TimeSpan step = remaining < TimeSpan.FromMilliseconds(250) ? remaining : TimeSpan.FromMilliseconds(250);
+                await System.Threading.Tasks.Task.Delay(step, cancellationToken);
+            }
+        }
+        finally
+        {
+            IsWaitingForRetry = false;
+            RetryWaitProgress = 0d;
+            RetryCountdownText = string.Empty;
         }
     }
 
@@ -246,6 +306,30 @@ public partial class TasksViewModel : ObservableObject
         }
     }
 
+    /// <summary>Shows every message the SLTask has reported, in time order.</summary>
+    [RelayCommand]
+    private void ShowSLTaskHistory(ISLTask? slTask)
+    {
+        if (slTask == null || ShowSLTaskHistoryDialog == null)
+        {
+            return;
+        }
+
+        ShowSLTaskHistoryDialog(slTask);
+    }
+
+    /// <summary>Opens the Message History window with every message saved in the database.</summary>
+    [RelayCommand]
+    private void ViewMessageHistory()
+    {
+        if (ShowMessageHistoryDialog == null)
+        {
+            return;
+        }
+
+        ShowMessageHistoryDialog(_messageStore.DatabasePath, _scheduler.Settings.MessageRetentionMonths);
+    }
+
     private bool CanOpenSchedule()
     {
         return !IsScanning;
@@ -268,6 +352,7 @@ public partial class TasksViewModel : ObservableObject
 
         newSettings.Save();
         _scheduler.Settings = newSettings;
+        _messageStore.RetentionMonths = newSettings.MessageRetentionMonths;
         UpdateScanStatusText();
     }
 
@@ -311,6 +396,21 @@ public partial class TasksViewModel : ObservableObject
     {
         string start = _scheduler.Settings.StartTime.ToString(@"hh\:mm");
         string stop = _scheduler.Settings.StopTime.ToString(@"hh\:mm");
-        ScanStatusText = IsScanning ? $"Scanning: start {start}, stop {stop}" : $"Not scanning (start {start}, stop {stop})";
+        if (!IsScanning)
+        {
+            ScanStatusText = $"Not scanning (start {start}, stop {stop})";
+            return;
+        }
+
+        // Outside the window: say when the next run starts, so Scan never looks like it did nothing.
+        DateTime now = DateTime.Now;
+        DateTime nextStart = now.Date + _scheduler.Settings.StartTime;
+        if (nextStart <= now)
+        {
+            nextStart = nextStart.AddDays(1);
+        }
+
+        string day = nextStart.Date == now.Date ? "today" : "tomorrow";
+        ScanStatusText = $"Scanning: waiting, next run {day} at {start} (stop {stop})";
     }
 }

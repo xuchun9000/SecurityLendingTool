@@ -1,13 +1,18 @@
-<UserControl x:Class="SecurityLendingTool.Views.TasksView"
+﻿<UserControl x:Class="SecurityLendingTool.Views.TasksView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:SecurityLendingTool.ViewModels"
+             xmlns:conv="clr-namespace:SecurityLendingTool.Converters"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
              d:DesignHeight="400"
              d:DesignWidth="700"
              d:DataContext="{d:DesignInstance Type=vm:TasksViewModel, IsDesignTimeCreatable=True}">
+    <UserControl.Resources>
+        <conv:ProgressToBackgroundConverter x:Key="ProgressToBackgroundConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
     <DockPanel Margin="8">
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
             <TextBlock DockPanel.Dock="Left"
@@ -29,12 +34,30 @@
                     Width="80"
                     Margin="0,0,8,0"
                     Command="{Binding OpenScheduleCommand}" />
+            <Button DockPanel.Dock="Right"
+                    Content="View Message History"
+                    Padding="8,0"
+                    Margin="0,0,8,0"
+                    Command="{Binding ViewMessageHistoryCommand}" />
             <TextBlock DockPanel.Dock="Right"
                        Text="{Binding ScanStatusText}"
                        Foreground="Gray"
                        Margin="0,0,12,0"
                        VerticalAlignment="Center" />
         </DockPanel>
+        <!-- Countdown to the next pass; only visible while waiting between passes. -->
+        <Grid DockPanel.Dock="Top"
+              Height="20"
+              Margin="0,0,0,8"
+              Visibility="{Binding IsWaitingForRetry, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ProgressBar Minimum="0"
+                         Maximum="100"
+                         Value="{Binding RetryWaitProgress, Mode=OneWay}"
+                         Foreground="#FF9FD89F" />
+            <TextBlock Text="{Binding RetryCountdownText}"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+        </Grid>
         <DataGrid ItemsSource="{Binding SLTasks}"
                   SelectedItem="{Binding SelectedSLTask}"
                   AutoGenerateColumns="False"
@@ -45,14 +68,38 @@
                   HeadersVisibility="All"
                   RowHeaderWidth="32"
                   LoadingRow="SLTasksGrid_LoadingRow"
-                  GridLinesVisibility="None"
-                  RowDetailsVisibilityMode="Visible">
+                  GridLinesVisibility="None">
             <DataGrid.RowStyle>
+                <!-- The whole row is the progress bar: light green fill up to Progress, transparent after. -->
                 <Style TargetType="DataGridRow">
+                    <Setter Property="Background" Value="{Binding Progress, Converter={StaticResource ProgressToBackgroundConverter}}" />
+                    <!-- Faint dashed separator under each row (4px dash, 3px gap). -->
+                    <Setter Property="BorderThickness" Value="0,0,0,1" />
+                    <Setter Property="BorderBrush">
+                        <Setter.Value>
+                            <DrawingBrush Viewport="0,0,7,1" ViewportUnits="Absolute" TileMode="Tile">
+                                <DrawingBrush.Drawing>
+                                    <DrawingGroup>
+                                        <GeometryDrawing Brush="Transparent">
+                                            <GeometryDrawing.Geometry>
+                                                <RectangleGeometry Rect="0,0,7,1" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                        <GeometryDrawing Brush="#FFCCCCCC">
+                                            <GeometryDrawing.Geometry>
+                                                <RectangleGeometry Rect="0,0,4,1" />
+                                            </GeometryDrawing.Geometry>
+                                        </GeometryDrawing>
+                                    </DrawingGroup>
+                                </DrawingBrush.Drawing>
+                            </DrawingBrush>
+                        </Setter.Value>
+                    </Setter>
                     <Style.Triggers>
-                        <Trigger Property="IsSelected" Value="True">
-                            <Setter Property="Background" Value="#FFEAF4FF" />
-                        </Trigger>
+                        <!-- Failed rows: whole row light red instead of the progress fill. -->
+                        <DataTrigger Binding="{Binding Status}" Value="Failed">
+                            <Setter Property="Background" Value="#FFFFE0E0" />
+                        </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </DataGrid.RowStyle>
@@ -91,7 +138,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="Status" Width="*">
+                <DataGridTemplateColumn Header="Status" Width="100">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding Status}"
@@ -123,21 +170,31 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="" Width="Auto">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button Content="History"
+                                    Width="60"
+                                    Margin="4,1"
+                                    Command="{Binding DataContext.ShowSLTaskHistoryCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Margin" Value="8,0,0,0" />
+                            <Setter Property="VerticalAlignment" Value="Center" />
+                            <!-- About 50 characters per line, then wrap. -->
+                            <Setter Property="TextWrapping" Value="Wrap" />
+                            <Setter Property="MaxWidth" Value="350" />
+                            <Setter Property="HorizontalAlignment" Value="Left" />
+                            <Setter Property="ToolTip" Value="{Binding Message}" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
             </DataGrid.Columns>
-            <DataGrid.RowDetailsTemplate>
-                <DataTemplate>
-                    <!-- Red track = not done yet; green fill grows with Progress and is full when Completed. -->
-                    <ProgressBar Height="2"
-                                 Margin="0,0,0,2"
-                                 HorizontalAlignment="Stretch"
-                                 Minimum="0"
-                                 Maximum="100"
-                                 Value="{Binding Progress, Mode=OneWay}"
-                                 BorderThickness="0"
-                                 Background="Red"
-                                 Foreground="Green" />
-                </DataTemplate>
-            </DataGrid.RowDetailsTemplate>
         </DataGrid>
     </DockPanel>
 </UserControl>

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 
 namespace SecurityLendingTool.Models;
@@ -12,6 +12,9 @@ public sealed class SLScheduleSettings
 
     /// <summary>Seconds to wait before the next pass retries SLTasks that did not complete (minimum 5).</summary>
     public int RetryIntervalSeconds { get; set; } = 60;
+
+    /// <summary>Months of SLTask messages kept in the database; older ones are deleted automatically (1 - 120).</summary>
+    public int MessageRetentionMonths { get; set; } = 3;
 
     public static string FilePath { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SecurityLendingTool", "schedule.json");
 
@@ -29,6 +32,8 @@ public sealed class SLScheduleSettings
                     {
                         settings.RetryIntervalSeconds = 5;
                     }
+
+                    settings.MessageRetentionMonths = Math.Clamp(settings.MessageRetentionMonths, 1, 120);
 
                     return settings;
                 }

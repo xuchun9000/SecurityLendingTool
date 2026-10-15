@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace SecurityLendingTool;
+namespace SecurityLendingTool.Views;
 
 public partial class MainWindow : Window
 {

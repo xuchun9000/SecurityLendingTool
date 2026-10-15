@@ -18,7 +18,8 @@ public sealed class GOSOSFeesFileWMC_Task : SLTaskBase
     protected override async Task<object?> ExecuteAsync(CancellationToken cancellationToken)
     {
         // TODO: implement "GOSOS Fees File WMC".
-        await Task.CompletedTask;
+        // TEST ONLY: random duration / random exception. Remove when implementing.
+        await SLTaskTestSimulator.SimulateAsync(Name, (percent, message) => ReportProgress(percent, message), cancellationToken);
         return null;
     }
 

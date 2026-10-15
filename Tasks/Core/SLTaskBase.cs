@@ -101,10 +101,11 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
             Reset();
         }
 
-        if (!CheckPreCondition())
+        SLPreConditionResult preCondition = CheckPreCondition();
+        if (!preCondition.IsMet)
         {
             Status = SLTaskStatus.Skipped;
-            RaiseProgressChanged("Precondition not met, skipped");
+            RaiseProgressChanged(SLTaskProgressEvent.PreconditionNotMet, preCondition.Reason);
             return;
         }
 
@@ -112,15 +113,17 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         Result = null;
         Progress = 0d;
         Status = SLTaskStatus.Running;
-        RaiseProgressChanged("Started");
+        RaiseProgressChanged(SLTaskProgressEvent.Started);
 
         CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         runCancellation = cts;
+        bool completed = false;
 
         try
         {
             object? output = await ExecuteAsync(cts.Token);
             Complete(output);
+            completed = true;
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
@@ -134,6 +137,11 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         {
             runCancellation = null;
             cts.Dispose();
+        }
+
+        if (completed)
+        {
+            OnFinished();
         }
     }
 
@@ -177,7 +185,10 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
     protected abstract void OnStop();
 
     /// <inheritdoc/>
-    public abstract bool CheckPreCondition();
+    public abstract SLPreConditionResult CheckPreCondition();
+
+    /// <inheritdoc/>
+    public abstract void OnFinished();
 
     /// <summary>Called by <see cref="Reset"/> after the base state is cleared; clear task-specific state here.</summary>
     protected abstract void OnReset();
@@ -187,16 +198,34 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
     {
         EnsureRunning(nameof(ReportProgress));
         Progress = percent;
-        RaiseProgressChanged(message);
+        RaiseProgressChanged(SLTaskProgressEvent.Progress, message);
     }
 
-    private void RaiseProgressChanged(string message)
+    private void RaiseProgressChanged(SLTaskProgressEvent progressEvent, string message = "")
     {
         EventHandler<SLTaskProgressEventArgs>? handler = ProgressChanged;
-        if (handler != null)
+        if (handler == null)
         {
-            handler(this, new SLTaskProgressEventArgs(Status, Progress, message));
+            return;
         }
+
+        // Description from the enum, plus the extra detail (if any): e.g. "Failed: timeout".
+        string description = progressEvent.ToDescription();
+        string text;
+        if (string.IsNullOrEmpty(message))
+        {
+            text = description;
+        }
+        else if (progressEvent == SLTaskProgressEvent.Progress)
+        {
+            text = message;
+        }
+        else
+        {
+            text = $"{description}: {message}";
+        }
+
+        handler(this, new SLTaskProgressEventArgs(progressEvent, Status, Progress, text));
     }
 
     // ---------- State changes (internal) ----------
@@ -207,7 +236,7 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         Result = output;
         Progress = 100d;
         Status = SLTaskStatus.Completed;
-        RaiseProgressChanged("Completed");
+        RaiseProgressChanged(SLTaskProgressEvent.Completed);
     }
 
     private void Fail(Exception exception)
@@ -215,14 +244,14 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         EnsureRunning(nameof(Fail));
         Error = exception;
         Status = SLTaskStatus.Failed;
-        RaiseProgressChanged("Failed: " + exception.Message);
+        RaiseProgressChanged(SLTaskProgressEvent.Failed, exception.Message);
     }
 
     private void Cancel()
     {
         EnsureRunning(nameof(Cancel));
         Status = SLTaskStatus.Canceled;
-        RaiseProgressChanged("Canceled");
+        RaiseProgressChanged(SLTaskProgressEvent.Canceled);
     }
 
     private void EnsureRunning(string action)

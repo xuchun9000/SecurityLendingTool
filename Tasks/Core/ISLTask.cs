@@ -57,9 +57,15 @@ public interface ISLTask : INotifyPropertyChanged
 
     /// <summary>
     /// Checked by <see cref="Start"/> before every run. True: the task runs.
-    /// False: the task is not run and ends as <see cref="SLTaskStatus.Skipped"/>.
+    /// False: the task is not run and ends as <see cref="SLTaskStatus.Skipped"/>; <see cref="SLPreConditionResult.Reason"/> says why.
     /// </summary>
-    bool CheckPreCondition();
+    SLPreConditionResult CheckPreCondition();
+
+    /// <summary>
+    /// Called by <see cref="Start"/> once, right after the task finished normally (Status = Completed,
+    /// <see cref="Result"/> already set). Not called when the task fails, is canceled or is skipped.
+    /// </summary>
+    void OnFinished();
 
     /// <summary>Asks a running task to stop; it ends as Canceled. Does nothing if it is not running.</summary>
     void Stop();

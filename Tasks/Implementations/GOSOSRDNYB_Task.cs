@@ -10,9 +10,9 @@ public sealed class GOSOSRDNYB_Task : SLTaskBase
     {
     }
 
-    public override bool CheckPreCondition()
+    public override SLPreConditionResult CheckPreCondition()
     {
-        return true;
+        return SLPreConditionResult.Met;
     }
 
     protected override async Task<object?> ExecuteAsync(CancellationToken cancellationToken)
@@ -20,6 +20,10 @@ public sealed class GOSOSRDNYB_Task : SLTaskBase
         // TODO: implement "GOSOS RD NYB".
         await Task.CompletedTask;
         return null;
+    }
+
+    public override void OnFinished()
+    {
     }
 
     protected override void OnStop()

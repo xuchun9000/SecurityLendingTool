@@ -98,11 +98,9 @@ public sealed class DemoTask : SLTaskBase
     {
         ClearResult();
 
-        string url = string.Format(
+        string url = string.Create(
             System.Globalization.CultureInfo.InvariantCulture,
-            "https://api.open-meteo.com/v1/forecast?latitude={0}&longitude={1}&current_weather=true",
-            Latitude,
-            Longitude);
+            $"https://api.open-meteo.com/v1/forecast?latitude={Latitude}&longitude={Longitude}&current_weather=true");
 
         ReportProgress(10, $"Downloading weather for {City}...");
         string json = await Http.GetStringAsync(url, cancellationToken);
@@ -147,9 +145,18 @@ public sealed class DemoTask : SLTaskBase
             file);
     }
     /// <summary>Needs a network connection to reach Open-Meteo.</summary>
-    public override bool CheckPreCondition()
+    public override SLPreConditionResult CheckPreCondition()
     {
-        return System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable();
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            return SLPreConditionResult.NotMet("No network connection");
+        }
+
+        return SLPreConditionResult.Met;
+    }
+
+    public override void OnFinished()
+    {
     }
 
     protected override void OnStop()

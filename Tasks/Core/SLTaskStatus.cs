@@ -20,6 +20,6 @@ public enum SLTaskStatus
     /// <summary>Finished because it was canceled.</summary>
     Canceled,
 
-    /// <summary>Not run because <see cref="ISLTask.CheckPreCondition"/> returned false.</summary>
+    /// <summary>Not run because <see cref="ISLTask.CheckPreCondition"/> was not met.</summary>
     Skipped,
 }

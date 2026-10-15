@@ -19,6 +19,9 @@
         <TabItem Header="Demo One">
             <views:DemoOneView DataContext="{Binding DemoOne}" />
         </TabItem>
+        <TabItem Header="Tasks">
+            <views:TasksView DataContext="{Binding SLTasksTab}" />
+        </TabItem>
         <!-- Add more TabItem entries here later. -->
     </TabControl>
 </Window>

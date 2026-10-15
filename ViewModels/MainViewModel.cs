@@ -9,4 +9,6 @@ namespace SecurityLendingTool.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     public DemoOneViewModel DemoOne { get; } = new();
+
+    public TasksViewModel SLTasksTab { get; } = new();
 }

@@ -28,22 +28,17 @@ public partial class DemoOneViewModel : ObservableObject
         "New York", "San Diego", "Miami", "Dallas",
     };
 
-    [ObservableProperty]
-    private Person? selectedPeople;
+    [ObservableProperty] private Person? _SelectedPeople;
 
     // Pushed by DataGridSelectionStatsBehavior (OneWayToSource) for the selected numeric cells.
-    [ObservableProperty]
-    private int selectionCount;
+    [ObservableProperty] private int _SelectionCount;
 
-    [ObservableProperty]
-    private double selectionSum;
+    [ObservableProperty] private double _SelectionSum;
 
-    [ObservableProperty]
-    private double selectionAverage;
+    [ObservableProperty] private double _SelectionAverage;
 
     // Pushed by DataGridSelectionStatsBehavior (OneWayToSource): every row that has a selected cell.
-    [ObservableProperty]
-    private IReadOnlyList<object> selectedRows = Array.Empty<object>();
+    [ObservableProperty] private IReadOnlyList<object> _SelectedRows = Array.Empty<object>();
 
     /// <summary>
     /// 100 rows: 20 rows randomly placed within the first 40 hold data, the rest are empty placeholders.

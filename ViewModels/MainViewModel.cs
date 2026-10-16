@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace SecurityLendingTool.ViewModels;
 
@@ -8,7 +8,5 @@ namespace SecurityLendingTool.ViewModels;
 /// </summary>
 public partial class MainViewModel : ObservableObject
 {
-    public DemoOneViewModel DemoOne { get; } = new();
-
     public TasksViewModel SLTasksTab { get; } = new();
 }

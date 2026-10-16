@@ -7,6 +7,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Security Lending Tool"
+        Icon="/Assets/app.ico"
         Height="450"
         Width="800"
         WindowStartupLocation="CenterScreen"
@@ -14,14 +15,21 @@
     <Window.DataContext>
         <vm:MainViewModel />
     </Window.DataContext>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
 
-    <TabControl Margin="8">
-        <TabItem Header="Demo One">
-            <views:DemoOneView DataContext="{Binding DemoOne}" />
-        </TabItem>
-        <TabItem Header="Tasks" IsSelected="True">
-            <views:TasksView DataContext="{Binding SLTasksTab}" />
-        </TabItem>
-        <!-- Add more TabItem entries here later. -->
-    </TabControl>
+    <DockPanel>
+        <!-- Ribbon of the selected tab: only the Tasks tab has one for now. -->
+        <views:SLTasksRibbon DockPanel.Dock="Top"
+                             Margin="8,8,8,4"
+                             DataContext="{Binding SLTasksTab}"
+                             Visibility="{Binding IsSelected, ElementName=SLTasksTabItem, Converter={StaticResource BooleanToVisibilityConverter}}" />
+        <TabControl Margin="8,0,8,8">
+            <TabItem x:Name="SLTasksTabItem" Header="Tasks" IsSelected="True">
+                <views:TasksView DataContext="{Binding SLTasksTab}" />
+            </TabItem>
+            <!-- Add more TabItem entries here later. -->
+        </TabControl>
+    </DockPanel>
 </Window>

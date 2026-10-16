@@ -14,37 +14,6 @@
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </UserControl.Resources>
     <DockPanel Margin="8">
-        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left"
-                       Text="Tasks"
-                       FontSize="16"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center" />
-            <Button DockPanel.Dock="Right"
-                    Content="Run All"
-                    Width="80"
-                    Command="{Binding RunAllSLTasksCommand}" />
-            <Button DockPanel.Dock="Right"
-                    Content="{Binding ScanButtonText}"
-                    Width="80"
-                    Margin="0,0,8,0"
-                    Command="{Binding ToggleScanCommand}" />
-            <Button DockPanel.Dock="Right"
-                    Content="Schedule..."
-                    Width="80"
-                    Margin="0,0,8,0"
-                    Command="{Binding OpenScheduleCommand}" />
-            <Button DockPanel.Dock="Right"
-                    Content="View Message History"
-                    Padding="8,0"
-                    Margin="0,0,8,0"
-                    Command="{Binding ViewMessageHistoryCommand}" />
-            <TextBlock DockPanel.Dock="Right"
-                       Text="{Binding ScanStatusText}"
-                       Foreground="Gray"
-                       Margin="0,0,12,0"
-                       VerticalAlignment="Center" />
-        </DockPanel>
         <!-- Countdown to the next pass; only visible while waiting between passes. -->
         <Grid DockPanel.Dock="Top"
               Height="20"
@@ -68,7 +37,8 @@
                   HeadersVisibility="All"
                   RowHeaderWidth="32"
                   LoadingRow="SLTasksGrid_LoadingRow"
-                  GridLinesVisibility="None">
+                  GridLinesVisibility="None"
+>
             <DataGrid.RowStyle>
                 <!-- The whole row is the progress bar: light green fill up to Progress, transparent after. -->
                 <Style TargetType="DataGridRow">

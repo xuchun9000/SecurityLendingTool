@@ -1,53 +1,71 @@
-﻿using System.Windows.Threading;
-using SecurityLendingTool.Models;
+﻿using SecurityLendingTool.Models;
 
 namespace SecurityLendingTool.Services;
 
 /// <summary>
-/// Checks the clock every second while scanning. Raises StartRequested once when the daily window opens
+/// Checks the clock every second while scanning (an async PeriodicTimer loop). Raises StartRequested once when the daily window opens
 /// (or immediately if scanning begins inside it) and StopRequested once when the window closes.
 /// If StopTime is earlier than StartTime the window runs overnight (e.g. 22:00 -> 06:00 next day).
 /// If StartTime equals StopTime the window is empty and nothing fires.
 /// </summary>
 public sealed class SLTaskScheduler
 {
-    private readonly DispatcherTimer _timer;
+    /// <summary>How often the clock is checked while scanning.</summary>
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(1);
+
+    private CancellationTokenSource? _scanCts;
     private DateTime? _lastStartedWindowDate;
     private bool _isWindowActive;
 
-    public SLTaskScheduler()
-    {
-        _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _timer.Tick += Timer_Tick;
-    }
-
     public SLScheduleSettings Settings { get; set; } = new SLScheduleSettings();
 
-    public bool IsScanning => _timer.IsEnabled;
+    public bool IsScanning => _scanCts != null;
 
     public event EventHandler? StartRequested;
 
     public event EventHandler? StopRequested;
 
+    /// <summary>
+    /// Starts checking the clock. Call on the UI thread: the loop resumes on the captured
+    /// SynchronizationContext, so StartRequested / StopRequested are raised on the UI thread.
+    /// </summary>
     public void StartScan()
     {
+        StopScan();
         _lastStartedWindowDate = null;
         _isWindowActive = false;
-        _timer.Start();
+        _scanCts = new CancellationTokenSource();
         Check(DateTime.Now);
+        _ = RunCheckLoopAsync(_scanCts.Token);
     }
 
     public void StopScan()
     {
-        _timer.Stop();
+        if (_scanCts != null)
+        {
+            _scanCts.Cancel();
+            _scanCts.Dispose();
+            _scanCts = null;
+        }
+
         _isWindowActive = false;
     }
 
-    private void Timer_Tick(object? sender, EventArgs e)
+    private async Task RunCheckLoopAsync(CancellationToken cancellationToken)
     {
-        Check(DateTime.Now);
+        using PeriodicTimer timer = new PeriodicTimer(CheckInterval);
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                Check(DateTime.Now);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // StopScan was called.
+        }
     }
-
     /// <summary>Returns the date on which the window containing 'now' started, or null if now is outside the window.</summary>
     private DateTime? GetWindowDate(DateTime now)
     {

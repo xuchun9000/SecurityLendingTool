@@ -16,7 +16,13 @@ public sealed class SLScheduleSettings
     /// <summary>Months of SLTask messages kept in the database; older ones are deleted automatically (1 - 120).</summary>
     public int MessageRetentionMonths { get; set; } = 3;
 
-    public static string FilePath { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SecurityLendingTool", "schedule.json");
+    /// <summary>File name of the settings file under %AppData%\SecurityLendingTool.</summary>
+    public const string FileName = "schedule.json";
+
+    /// <summary>Format used to show and parse StartTime / StopTime, e.g. 09:00.</summary>
+    public const string TimeFormat = @"hh\:mm";
+
+    public static string FilePath { get; } = Path.Combine(SLAppPaths.AppDataFolder, FileName);
 
     public static SLScheduleSettings Load()
     {

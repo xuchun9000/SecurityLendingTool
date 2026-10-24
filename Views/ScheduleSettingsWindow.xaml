@@ -1,7 +1,10 @@
-<Window x:Class="SecurityLendingTool.Views.ScheduleSettingsWindow"
+﻿<Window x:Class="SecurityLendingTool.Views.ScheduleSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:SecurityLendingTool.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
         Title="Schedule"
         Width="460"
         SizeToContent="Height"
@@ -10,7 +13,9 @@
         Background="#F3F4F6"
         FontFamily="Segoe UI"
         FontSize="13"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        xmlns:vm="clr-namespace:SecurityLendingTool.ViewModels"
+        d:DataContext="{d:DesignInstance vm:ScheduleSettingsViewModel}">
     <Window.Resources>
         <Style x:Key="SLCardStyle" TargetType="Border">
             <Setter Property="Background" Value="White" />
@@ -96,7 +101,7 @@
         <!-- Daily window -->
         <Border Style="{StaticResource SLCardStyle}">
             <StackPanel>
-                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="🕘  Daily window" />
+                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="ðŸ•˜  Daily window" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="60" />
@@ -120,8 +125,8 @@
                 </Grid>
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <TextBlock Style="{StaticResource SLLabelStyle}" Text="Presets" Width="60" />
-                    <Button Style="{StaticResource SLChipStyle}" Content="08:00–18:00" Command="{Binding SetWindowCommand}" CommandParameter="08:00-18:00" />
-                    <Button Style="{StaticResource SLChipStyle}" Content="09:00–17:00" Command="{Binding SetWindowCommand}" CommandParameter="09:00-17:00" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="08:00â€“18:00" Command="{Binding SetWindowCommand}" CommandParameter="08:00-18:00" />
+                    <Button Style="{StaticResource SLChipStyle}" Content="09:00â€“17:00" Command="{Binding SetWindowCommand}" CommandParameter="09:00-17:00" />
                     <Button Style="{StaticResource SLChipStyle}" Content="All day" Command="{Binding SetWindowCommand}" CommandParameter="00:00-23:59" />
                 </StackPanel>
                 <Border Background="#EEF7EE" CornerRadius="6" Padding="10,6" Margin="0,12,0,0">
@@ -146,7 +151,7 @@
         <!-- Retry -->
         <Border Style="{StaticResource SLCardStyle}">
             <StackPanel>
-                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="🔁  Retry" />
+                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="ðŸ”  Retry" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -172,7 +177,7 @@
         <!-- Message history -->
         <Border Style="{StaticResource SLCardStyle}">
             <StackPanel>
-                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="🗂  Message history" />
+                <TextBlock Style="{StaticResource SLHeaderStyle}" Text="ðŸ—‚  Message history" />
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />

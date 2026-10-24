@@ -1,4 +1,6 @@
 ﻿using System.Collections.Concurrent;
+using System.Threading.Channels;
+using SecurityLendingTool.Models;
 using System.Globalization;
 using System.IO;
 using Microsoft.Data.Sqlite;
@@ -8,7 +10,7 @@ namespace SecurityLendingTool.Services;
 
 /// <summary>
 /// Saves every SLTask message to a SQLite database, %AppData%\SecurityLendingTool\SLTaskMessages.db,
-/// table SLTaskMessage. Writes happen on a background thread, so the UI never waits for the disk.
+/// table SLTaskMessage. Writes happen on a background Task, so the UI never waits for the disk.
 /// <para>
 /// Each run of a task (from Started or PreconditionNotMet to the end) gets its own RunId, so one
 /// attempt can be queried on its own. Timestamps are stored as local time text "yyyy-MM-dd HH:mm:ss.fff",
@@ -17,9 +19,18 @@ namespace SecurityLendingTool.Services;
 /// </summary>
 public sealed class SLTaskMessageStore : IDisposable
 {
-    private readonly BlockingCollection<SLTaskMessageRecord> _queue = new BlockingCollection<SLTaskMessageRecord>();
+    /// <summary>How often the writer wakes with nothing queued, so the daily purge still runs.</summary>
+    private static readonly TimeSpan IdleWakeInterval = TimeSpan.FromHours(1);
+
+    /// <summary>How often old messages are purged.</summary>
+    private static readonly TimeSpan PurgeInterval = TimeSpan.FromDays(1);
+
+    /// <summary>How long Dispose waits for queued messages to be written.</summary>
+    private static readonly TimeSpan DisposeFlushTimeout = TimeSpan.FromSeconds(5);
+
+    private readonly Channel<SLTaskMessageRecord> _queue = Channel.CreateUnbounded<SLTaskMessageRecord>(new UnboundedChannelOptions { SingleReader = true });
     private readonly ConcurrentDictionary<string, string> _currentRunIds = new ConcurrentDictionary<string, string>();
-    private readonly Thread _writerThread;
+    private readonly Task _writerTask;
     private readonly string _connectionString;
     private int _retentionMonths = 3;
     private volatile bool _purgeRequested = true;
@@ -27,14 +38,13 @@ public sealed class SLTaskMessageStore : IDisposable
 
     public SLTaskMessageStore()
     {
-        string folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SecurityLendingTool");
+        string folder = SLAppPaths.AppDataFolder;
         Directory.CreateDirectory(folder);
-        DatabasePath = Path.Combine(folder, "SLTaskMessages.db");
+        DatabasePath = SLTaskMessageDb.DatabasePath;
         _connectionString = new SqliteConnectionStringBuilder { DataSource = DatabasePath }.ToString();
         CreateSchema();
 
-        _writerThread = new Thread(WriteLoop) { IsBackground = true, Name = "SLTaskMessageStore writer" };
-        _writerThread.Start();
+        _writerTask = Task.Run(WriteLoopAsync);
     }
 
     /// <summary>Full path of the database file.</summary>
@@ -62,7 +72,7 @@ public sealed class SLTaskMessageStore : IDisposable
 
     private void SLTask_ProgressChanged(object? sender, SLTaskProgressEventArgs e)
     {
-        if (sender is not ISLTask slTask || _queue.IsAddingCompleted)
+        if (sender is not ISLTask slTask)
         {
             return;
         }
@@ -78,7 +88,8 @@ public sealed class SLTaskMessageStore : IDisposable
             runId = _currentRunIds.GetOrAdd(slTask.Name, _ => Guid.NewGuid().ToString("N"));
         }
 
-        _queue.Add(new SLTaskMessageRecord(DateTime.Now, slTask.Name, runId, e.Event, e.Status, e.Progress, e.Message));
+        // TryWrite returns false once the store is disposed; the message is then dropped.
+        _queue.Writer.TryWrite(new SLTaskMessageRecord(DateTime.Now, slTask.Name, runId, e.Event, e.Status, e.Progress, e.Message));
     }
 
     private void CreateSchema()
@@ -96,9 +107,9 @@ public sealed class SLTaskMessageStore : IDisposable
             command.ExecuteNonQuery();
         }
 
-        command.CommandText = """
+        command.CommandText = $"""
             PRAGMA journal_mode = WAL;
-            CREATE TABLE IF NOT EXISTS SLTaskMessage (
+            CREATE TABLE IF NOT EXISTS {SLTaskMessageDb.TableName} (
                 Id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 Timestamp   TEXT    NOT NULL,
                 MachineName TEXT    NOT NULL,
@@ -109,21 +120,21 @@ public sealed class SLTaskMessageStore : IDisposable
                 Progress    REAL    NOT NULL,
                 Message     TEXT    NOT NULL
             );
-            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_Timestamp ON SLTaskMessage (Timestamp);
-            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_TaskName_Timestamp ON SLTaskMessage (TaskName, Timestamp);
-            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_Event_Timestamp ON SLTaskMessage (Event, Timestamp);
-            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_RunId ON SLTaskMessage (RunId);
+            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_Timestamp ON {SLTaskMessageDb.TableName} (Timestamp);
+            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_TaskName_Timestamp ON {SLTaskMessageDb.TableName} (TaskName, Timestamp);
+            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_Event_Timestamp ON {SLTaskMessageDb.TableName} (Event, Timestamp);
+            CREATE INDEX IF NOT EXISTS IX_SLTaskMessage_RunId ON {SLTaskMessageDb.TableName} (RunId);
             """;
         command.ExecuteNonQuery();
     }
 
-    private void WriteLoop()
+    private async Task WriteLoopAsync()
     {
         using SqliteConnection connection = new SqliteConnection(_connectionString);
         connection.Open();
         using SqliteCommand insert = connection.CreateCommand();
-        insert.CommandText = """
-            INSERT INTO SLTaskMessage (Timestamp, MachineName, TaskName, RunId, Event, Status, Progress, Message)
+        insert.CommandText = $"""
+            INSERT INTO {SLTaskMessageDb.TableName} (Timestamp, MachineName, TaskName, RunId, Event, Status, Progress, Message)
             VALUES ($timestamp, $machine, $task, $run, $event, $status, $progress, $message);
             """;
         SqliteParameter timestamp = insert.Parameters.Add("$timestamp", SqliteType.Text);
@@ -136,38 +147,55 @@ public sealed class SLTaskMessageStore : IDisposable
         SqliteParameter message = insert.Parameters.Add("$message", SqliteType.Text);
         machine.Value = Environment.MachineName;
 
-        while (!_queue.IsCompleted)
+        ChannelReader<SLTaskMessageRecord> reader = _queue.Reader;
+        while (true)
         {
-            if (_purgeRequested || DateTime.Now - _lastPurge >= TimeSpan.FromDays(1))
+            if (_purgeRequested || DateTime.Now - _lastPurge >= PurgeInterval)
             {
                 PurgeOldMessages(connection);
             }
 
-            // Wake up at least once an hour, so the daily purge still runs when nothing is logged.
-            if (!_queue.TryTake(out SLTaskMessageRecord? record, TimeSpan.FromHours(1)))
+            bool hasMore;
+            using (CancellationTokenSource idle = new CancellationTokenSource(IdleWakeInterval))
             {
-                continue;
+                try
+                {
+                    hasMore = await reader.WaitToReadAsync(idle.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Nothing logged for a while; loop round so the daily purge can run.
+                    continue;
+                }
             }
 
-            try
+            if (!hasMore)
             {
-                timestamp.Value = record.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
-                task.Value = record.TaskName;
-                run.Value = record.RunId;
-                progressEvent.Value = record.Event.ToString();
-                status.Value = record.Status.ToString();
-                progress.Value = record.Progress;
-                message.Value = record.Message;
-                insert.ExecuteNonQuery();
+                // Completed by Dispose and fully drained.
+                return;
             }
-            catch (SqliteException ex)
+
+            while (reader.TryRead(out SLTaskMessageRecord? record))
             {
-                // Never let logging break the app; note it in the debug output.
-                System.Diagnostics.Debug.WriteLine($"SLTaskMessageStore: could not save message for '{record.TaskName}': {ex.Message}");
+                try
+                {
+                    timestamp.Value = record.Timestamp.ToString(SLTaskMessageDb.TimestampFormat, CultureInfo.InvariantCulture);
+                    task.Value = record.TaskName;
+                    run.Value = record.RunId;
+                    progressEvent.Value = record.Event.ToString();
+                    status.Value = record.Status.ToString();
+                    progress.Value = record.Progress;
+                    message.Value = record.Message;
+                    insert.ExecuteNonQuery();
+                }
+                catch (SqliteException ex)
+                {
+                    // Never let logging break the app; note it in the debug output.
+                    System.Diagnostics.Debug.WriteLine($"SLTaskMessageStore: could not save message for '{record.TaskName}': {ex.Message}");
+                }
             }
         }
     }
-
     /// <summary>Deletes messages older than <see cref="RetentionMonths"/> and gives the freed space back to the disk.</summary>
     private void PurgeOldMessages(SqliteConnection connection)
     {
@@ -175,9 +203,9 @@ public sealed class SLTaskMessageStore : IDisposable
         _lastPurge = DateTime.Now;
         try
         {
-            string cutoff = DateTime.Now.AddMonths(-RetentionMonths).ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+            string cutoff = DateTime.Now.AddMonths(-RetentionMonths).ToString(SLTaskMessageDb.TimestampFormat, CultureInfo.InvariantCulture);
             using SqliteCommand delete = connection.CreateCommand();
-            delete.CommandText = "DELETE FROM SLTaskMessage WHERE Timestamp < $cutoff;";
+            delete.CommandText = $"DELETE FROM {SLTaskMessageDb.TableName} WHERE Timestamp < $cutoff;";
             delete.Parameters.AddWithValue("$cutoff", cutoff);
             int deleted = delete.ExecuteNonQuery();
             if (deleted > 0)
@@ -195,16 +223,22 @@ public sealed class SLTaskMessageStore : IDisposable
         }
     }
 
-    /// <summary>Writes whatever is still queued (up to 5 s), then stops the writer.</summary>
+    /// <summary>Writes whatever is still queued (up to <see cref="DisposeFlushTimeout"/>), then stops the writer Task.</summary>
     public void Dispose()
     {
-        if (_queue.IsAddingCompleted)
+        if (!_queue.Writer.TryComplete())
         {
             return;
         }
 
-        _queue.CompleteAdding();
-        _writerThread.Join(TimeSpan.FromSeconds(5));
+        try
+        {
+            _writerTask.Wait(DisposeFlushTimeout);
+        }
+        catch (AggregateException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"SLTaskMessageStore: writer failed: {ex.InnerException?.Message}");
+        }
     }
 
     private sealed record SLTaskMessageRecord(DateTime Timestamp, string TaskName, string RunId, SLTaskProgressEvent Event, SLTaskStatus Status, double Progress, string Message);

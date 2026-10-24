@@ -192,7 +192,7 @@ public abstract partial class SLTaskBase : ObservableObject, ISLTask
         Result = null;
         Progress = 0d;
         Message = string.Empty;
-        Status = SLTaskStatus.NotStarted;
+        Status = SLTaskStatus.NotStarted; 
         OnReset();
     }
 

@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using System.IO;
 using Microsoft.Data.Sqlite;
 
@@ -16,8 +16,6 @@ public sealed record SLTaskHistoryDay(DateOnly Date, int SLTaskCount, int NotCom
 /// </summary>
 public static class SLTaskMessageReader
 {
-    private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss.fff";
-
     /// <summary>All days with messages, newest first.</summary>
     public static IReadOnlyList<SLTaskHistoryDay> ReadDays(string databasePath)
     {
@@ -36,9 +34,9 @@ public static class SLTaskMessageReader
         using SqliteCommand command = connection.CreateCommand();
         // With a single MAX() aggregate, SQLite takes the bare Status column from the row with the
         // highest Id, i.e. the last message of that SLTask on that day (its final status).
-        command.CommandText = """
+        command.CommandText = $"""
             SELECT substr(Timestamp, 1, 10) AS Day, TaskName, Status, MAX(Id)
-            FROM SLTaskMessage
+            FROM {SLTaskMessageDb.TableName}
             GROUP BY Day, TaskName
             ORDER BY Day DESC;
             """;
@@ -84,18 +82,18 @@ public static class SLTaskMessageReader
         }
 
         using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = """
+        command.CommandText = $"""
             SELECT Timestamp, TaskName, RunId, Event, Status, Progress, Message
-            FROM SLTaskMessage
+            FROM {SLTaskMessageDb.TableName}
             WHERE Timestamp >= $from AND Timestamp < $to
             ORDER BY Timestamp, Id;
             """;
-        command.Parameters.AddWithValue("$from", date.ToDateTime(TimeOnly.MinValue).ToString(TimestampFormat, CultureInfo.InvariantCulture));
-        command.Parameters.AddWithValue("$to", date.AddDays(1).ToDateTime(TimeOnly.MinValue).ToString(TimestampFormat, CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$from", date.ToDateTime(TimeOnly.MinValue).ToString(SLTaskMessageDb.TimestampFormat, CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("$to", date.AddDays(1).ToDateTime(TimeOnly.MinValue).ToString(SLTaskMessageDb.TimestampFormat, CultureInfo.InvariantCulture));
         using SqliteDataReader reader = command.ExecuteReader();
         while (reader.Read())
         {
-            DateTime timestamp = DateTime.ParseExact(reader.GetString(0), TimestampFormat, CultureInfo.InvariantCulture);
+            DateTime timestamp = DateTime.ParseExact(reader.GetString(0), SLTaskMessageDb.TimestampFormat, CultureInfo.InvariantCulture);
             messages.Add(new SLTaskStoredMessage(timestamp, reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), reader.GetDouble(5), reader.GetString(6)));
         }
 
@@ -131,7 +129,7 @@ public static class SLTaskMessageReader
     private static bool TableExists(SqliteConnection connection)
     {
         using SqliteCommand command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'SLTaskMessage';";
+        command.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '{SLTaskMessageDb.TableName}';";
         long count = (long)(command.ExecuteScalar() ?? 0L);
         return count > 0;
     }

@@ -87,7 +87,10 @@ public partial class TasksViewModel : ObservableObject
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(StartSLTaskCommand), nameof(StopSLTaskCommand))] private bool _IsRunningAll;
 
     /// <summary>True while the scheduler checks the clock every second.</summary>
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ScanButtonText))] [NotifyCanExecuteChangedFor(nameof(OpenScheduleCommand))] private bool _IsScanning;
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(ScanButtonText))] 
+    [NotifyCanExecuteChangedFor(nameof(OpenScheduleCommand))] 
+    private bool _IsScanning;
 
     [ObservableProperty] private string _ScanStatusText = string.Empty;
 
@@ -388,14 +391,14 @@ public partial class TasksViewModel : ObservableObject
     {
         CancelScheduledCycle();
         int notCompleted = SLTasks.Count(slTask => slTask.Status != SLTaskStatus.Completed);
-        string start = _scheduler.Settings.StartTime.ToString(@"hh\:mm");
+        string start = _scheduler.Settings.StartTime.ToString(SLScheduleSettings.TimeFormat);
         ScanStatusText = $"Stop time reached at {DateTime.Now:HH:mm:ss}: {notCompleted} not completed, next cycle at {start}";
     }
 
     private void UpdateScanStatusText()
     {
-        string start = _scheduler.Settings.StartTime.ToString(@"hh\:mm");
-        string stop = _scheduler.Settings.StopTime.ToString(@"hh\:mm");
+        string start = _scheduler.Settings.StartTime.ToString(SLScheduleSettings.TimeFormat);
+        string stop = _scheduler.Settings.StopTime.ToString(SLScheduleSettings.TimeFormat);
         if (!IsScanning)
         {
             ScanStatusText = $"Not scanning (start {start}, stop {stop})";

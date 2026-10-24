@@ -1,4 +1,5 @@
-using System.IO;
+﻿using System.IO;
+using SecurityLendingTool.Models;
 using System.Net.Http;
 using System.Text.Json;
 using SecurityLendingTool.Tasks.Core;
@@ -12,6 +13,9 @@ namespace SecurityLendingTool.Tasks.Implementations;
 /// </summary>
 public sealed class DemoTask : SLTaskBase
 {
+    /// <summary>Subfolder of %LocalAppData%\SecurityLendingTool where weather results are saved.</summary>
+    private const string WeatherFolderName = "Weather";
+
     private static readonly HttpClient Http = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
 
     private double? temperatureC;
@@ -40,7 +44,7 @@ public sealed class DemoTask : SLTaskBase
 
     // ---------- Result ----------
 
-    /// <summary>Temperature in °C.</summary>
+    /// <summary>Temperature in Â°C.</summary>
     public double? TemperatureC
     {
         get => temperatureC;
@@ -124,10 +128,7 @@ public sealed class DemoTask : SLTaskBase
         RawJson = json;
         ReportProgress(80, "Saving result to file...");
 
-        string folder = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SecurityLendingTool",
-            "Weather");
+        string folder = Path.Combine(SLAppPaths.LocalAppDataFolder, WeatherFolderName);
         Directory.CreateDirectory(folder);
         string file = Path.Combine(folder, $"weather_{DateTime.Now:yyyyMMdd_HHmmss}.json");
         await File.WriteAllTextAsync(file, json, cancellationToken);

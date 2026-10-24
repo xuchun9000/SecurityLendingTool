@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SecurityLendingTool.Models;
@@ -23,17 +23,33 @@ public partial class ScheduleSettingsViewModel : ObservableObject
         _RetentionMonths = Math.Clamp(settings.MessageRetentionMonths, MinRetentionMonths, MaxRetentionMonths);
     }
 
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(OkCommand))] [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StartTimeText))] private int _StartHour;
+    [ObservableProperty] 
+    [NotifyCanExecuteChangedFor(nameof(OkCommand))] 
+    [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StartTimeText))] 
+    private int _StartHour;
 
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(OkCommand))] [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StartTimeText))] private int _StartMinute;
+    [ObservableProperty] 
+    [NotifyCanExecuteChangedFor(nameof(OkCommand))] 
+    [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StartTimeText))] 
+    private int _StartMinute;
 
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(OkCommand))] [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StopTimeText))] private int _StopHour;
+    [ObservableProperty] 
+    [NotifyCanExecuteChangedFor(nameof(OkCommand))] 
+    [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StopTimeText))] 
+    private int _StopHour;
 
-    [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(OkCommand))] [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StopTimeText))] private int _StopMinute;
+    [ObservableProperty] 
+    [NotifyCanExecuteChangedFor(nameof(OkCommand))] 
+    [NotifyPropertyChangedFor(nameof(ErrorText), nameof(WindowSummary), nameof(OvernightNote), nameof(StopTimeText))] 
+    private int _StopMinute;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(RetrySummary), nameof(RetrySliderValue))] private int _RetryIntervalSeconds;
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(RetrySummary), nameof(RetrySliderValue))] 
+    private int _RetryIntervalSeconds;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(RetentionSummary), nameof(RetentionSliderValue))] private int _RetentionMonths;
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(RetentionSummary), nameof(RetentionSliderValue))] 
+    private int _RetentionMonths;
 
     /// <summary>Raised with true (OK) or false (Cancel); the window closes itself.</summary>
     public event EventHandler<bool>? CloseRequested;
@@ -73,7 +89,7 @@ public partial class ScheduleSettingsViewModel : ObservableObject
 
     public string StopTimeText => FormatTime(StopTime);
 
-    /// <summary>E.g. "Runs 09:00 → 17:00 (8 h)".</summary>
+    /// <summary>E.g. "Runs 09:00 â†’ 17:00 (8 h)".</summary>
     public string WindowSummary
     {
         get
@@ -89,7 +105,7 @@ public partial class ScheduleSettingsViewModel : ObservableObject
                 length += TimeSpan.FromDays(1);
             }
 
-            return $"Runs {StartTimeText} → {StopTimeText} ({FormatDuration(length)})";
+            return $"Runs {StartTimeText} â†’ {StopTimeText} ({FormatDuration(length)})";
         }
     }
 
@@ -170,8 +186,8 @@ public partial class ScheduleSettingsViewModel : ObservableObject
     {
         string[] parts = (window ?? string.Empty).Split('-');
         if (parts.Length == 2
-            && TimeSpan.TryParseExact(parts[0], @"hh\:mm", CultureInfo.InvariantCulture, out TimeSpan start)
-            && TimeSpan.TryParseExact(parts[1], @"hh\:mm", CultureInfo.InvariantCulture, out TimeSpan stop))
+            && TimeSpan.TryParseExact(parts[0], SLScheduleSettings.TimeFormat, CultureInfo.InvariantCulture, out TimeSpan start)
+            && TimeSpan.TryParseExact(parts[1], SLScheduleSettings.TimeFormat, CultureInfo.InvariantCulture, out TimeSpan stop))
         {
             StartHour = start.Hours;
             StartMinute = start.Minutes;
